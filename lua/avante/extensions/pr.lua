@@ -68,6 +68,11 @@ local function get_pr_info(branch)
     return nil, "Failed to parse PR JSON data"
   end
   
+  -- Validate PR data
+  if not pr_data or not pr_data.number then
+    return nil, "Invalid PR data received"
+  end
+  
   return pr_data, nil
 end
 
@@ -80,6 +85,10 @@ local function get_pr_diff(pr_number)
   
   if vim.v.shell_error ~= 0 then
     return nil, "Failed to get PR diff: " .. output
+  end
+  
+  if output == "" or output:match("^%s*$") then
+    return nil, "PR diff is empty. This might happen if the PR has no changes or has been merged."
   end
   
   return output, nil
@@ -103,12 +112,16 @@ local function construct_system_prompt(pr_data, diff_content, user_input)
     string.format("**Title:** %s", pr_data.title or "N/A"),
     string.format("**Author:** %s", (pr_data.author and pr_data.author.login) or "N/A"),
     string.format("**PR Number:** #%s", pr_data.number or "N/A"),
-    string.format("**URL:** %s", pr_data.url or "N/A"),
-    "",
   }
   
+  if pr_data.url then
+    table.insert(prompt_parts, string.format("**URL:** %s", pr_data.url))
+  end
+  
+  table.insert(prompt_parts, "")
+  
   -- Add description if available
-  if pr_data.body and pr_data.body ~= "" then
+  if pr_data.body and pr_data.body ~= "" and pr_data.body ~= vim.NIL then
     table.insert(prompt_parts, "**Description:**")
     table.insert(prompt_parts, pr_data.body)
     table.insert(prompt_parts, "")
@@ -118,10 +131,14 @@ local function construct_system_prompt(pr_data, diff_content, user_input)
   if pr_data.labels and #pr_data.labels > 0 then
     local label_names = {}
     for _, label in ipairs(pr_data.labels) do
-      table.insert(label_names, label.name)
+      if label.name then
+        table.insert(label_names, label.name)
+      end
     end
-    table.insert(prompt_parts, string.format("**Labels:** %s", table.concat(label_names, ", ")))
-    table.insert(prompt_parts, "")
+    if #label_names > 0 then
+      table.insert(prompt_parts, string.format("**Labels:** %s", table.concat(label_names, ", ")))
+      table.insert(prompt_parts, "")
+    end
   end
   
   -- Add the diff content

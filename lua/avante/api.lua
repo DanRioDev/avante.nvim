@@ -307,11 +307,14 @@ function M.pr(user_input)
     end
     
     -- Pass the constructed system prompt to the ask function
-    M.ask({
-      question = result,
-      ask = false, -- Use chat mode for better PR review experience
-      new_chat = true -- Start a new chat for the PR review
-    })
+    -- Use vim.schedule to ensure we're in the main thread
+    vim.schedule(function()
+      M.ask({
+        question = result,
+        ask = false, -- Use chat mode for better PR review experience
+        new_chat = true -- Start a new chat for the PR review
+      })
+    end)
   end)
 end
 
