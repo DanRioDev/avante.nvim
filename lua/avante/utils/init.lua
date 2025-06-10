@@ -954,6 +954,22 @@ function M.get_chat_mentions()
     callback = function(sidebar) sidebar.file_selector:add_buffer_files() end,
   })
 
+  table.insert(mentions, {
+    description = "pr",
+    command = "pr",
+    details = "AI-assisted Pull Request review",
+    callback = function(sidebar) 
+      -- Extract user input from the current line
+      local current_line = vim.api.nvim_get_current_line()
+      local user_input = current_line:match("@pr%s*(.*)") or ""
+      user_input = vim.trim(user_input)
+      if user_input == "" then user_input = nil end
+      
+      -- Call the PR API
+      require("avante.api").pr(user_input)
+    end,
+  })
+
   return mentions
 end
 
