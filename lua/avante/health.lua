@@ -64,8 +64,36 @@ function M.check()
     end
   end
 
+  -- Check PR extension dependencies
+  M.check_pr_extension()
+
   -- Check TreeSitter dependencies
   M.check_treesitter()
+end
+
+-- Check PR extension dependencies
+function M.check_pr_extension()
+  H.start("PR Extension Dependencies")
+  
+  local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
+  if not pr_ext_ok then
+    H.error("PR extension module not available")
+    return
+  end
+  
+  if not pr_ext.is_available then
+    H.error("PR extension is_available function not found")
+    return
+  end
+  
+  local available, error_msg = pr_ext.is_available()
+  if available then
+    H.ok("PR extension is available (Octo plugin and gh CLI found)")
+  else
+    H.warn("PR extension is not available: " .. error_msg)
+    H.info("The :AvantePR command will not be registered")
+    H.info("Install missing dependencies to enable PR review functionality")
+  end
 end
 
 -- Check TreeSitter functionality and parsers

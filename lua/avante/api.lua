@@ -300,6 +300,13 @@ function M.stop() require("avante.llm").cancel_inflight_request() end
 function M.pr(user_input)
   local pr_ext = require("avante.extensions.pr")
   
+  -- Check if PR extension is available before proceeding
+  local available, error_msg = pr_ext.is_available()
+  if not available then
+    Utils.error("PR extension is not available: " .. error_msg, { once = true })
+    return
+  end
+  
   pr_ext.review_pr(user_input, function(success, result)
     if not success then
       Utils.error("PR review failed: " .. result, { once = true })

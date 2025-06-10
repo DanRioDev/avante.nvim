@@ -167,10 +167,21 @@ cmd("ShowRepoMap", function() require("avante.repo_map").show() end, { desc = "a
 cmd("Models", function() require("avante.model_selector").open() end, { desc = "avante: show models" })
 cmd("History", function() require("avante.api").select_history() end, { desc = "avante: show histories" })
 cmd("Stop", function() require("avante.api").stop() end, { desc = "avante: stop current AI request" })
-cmd("PR", function(opts)
-  local user_input = opts.args and vim.trim(opts.args) or ""
-  require("avante.api").pr(user_input ~= "" and user_input or nil)
-end, {
-  desc = "avante: AI-assisted Pull Request review",
-  nargs = "*"
-})
+
+-- Only register PR command if dependencies are available
+local pr_available = false
+local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
+if pr_ext_ok and pr_ext.is_available then
+  local available, _ = pr_ext.is_available()
+  pr_available = available
+end
+
+if pr_available then
+  cmd("PR", function(opts)
+    local user_input = opts.args and vim.trim(opts.args) or ""
+    require("avante.api").pr(user_input ~= "" and user_input or nil)
+  end, {
+    desc = "avante: AI-assisted Pull Request review",
+    nargs = "*"
+  })
+end

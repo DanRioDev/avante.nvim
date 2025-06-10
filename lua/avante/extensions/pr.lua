@@ -3,9 +3,32 @@ local M = {}
 
 local Utils = require("avante.utils")
 
+---Check if PR extension should be available (dependencies check)
+---@return boolean, string?
+function M.is_available()
+  -- Check if Octo plugin is available
+  local octo_ok, _ = pcall(require, 'octo')
+  if not octo_ok then
+    return false, "Octo plugin is not installed. Please install it from https://github.com/pwntester/octo.nvim"
+  end
+  
+  -- Check if gh CLI is available
+  if vim.fn.executable("gh") == 0 then
+    return false, "GitHub CLI (gh) is not installed or not in PATH. Please install it from https://cli.github.com/"
+  end
+  
+  return true, nil
+end
+
 ---Check if required dependencies are available
 ---@return boolean, string?
 local function check_dependencies()
+  -- Check if Octo plugin is available
+  local octo_ok, _ = pcall(require, 'octo')
+  if not octo_ok then
+    return false, "Octo plugin is not installed. Please install it from https://github.com/pwntester/octo.nvim"
+  end
+  
   -- Check if gh CLI is available
   if vim.fn.executable("gh") == 0 then
     return false, "GitHub CLI (gh) is not installed or not in PATH. Please install it from https://cli.github.com/"
