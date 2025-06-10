@@ -296,6 +296,28 @@ end
 
 function M.stop() require("avante.llm").cancel_inflight_request() end
 
+---@param user_input? string Optional user input following @pr command
+function M.pr(user_input)
+  local pr_ext = require("avante.extensions.pr")
+  
+  pr_ext.review_pr(user_input, function(success, result)
+    if not success then
+      Utils.error("PR review failed: " .. result, { once = true })
+      return
+    end
+    
+    -- Pass the constructed system prompt to the ask function
+    -- Use vim.schedule to ensure we're in the main thread
+    vim.schedule(function()
+      M.ask({
+        question = result,
+        ask = false, -- Use chat mode for better PR review experience
+        new_chat = true -- Start a new chat for the PR review
+      })
+    end)
+  end)
+end
+
 return setmetatable(M, {
   __index = function(t, k)
     local module = require("avante")
