@@ -955,18 +955,33 @@ function M.get_chat_mentions()
   })
 
   table.insert(mentions, {
-    description = "pr",
-    command = "pr",
+    description = "pr_debug",
+    command = "pr_debug",
     details = "AI-assisted Pull Request review",
     callback = function(sidebar) 
+      vim.notify("Attempting to trigger @pr_debug", vim.log.levels.INFO, {title = "Avante Debug"})
+      
       -- Extract user input from the current line
       local current_line = vim.api.nvim_get_current_line()
-      local user_input = current_line:match("@pr%s*(.*)") or ""
+      local pattern = "@pr_debug%s*(.*)" -- Adjusted for new command
+      local user_input = current_line:match(pattern) or ""
       user_input = vim.trim(user_input)
       if user_input == "" then user_input = nil end
+
+      vim.notify("Calling avante.api.pr with input: " .. (user_input or "nil"), vim.log.levels.INFO, {title = "Avante Debug"})
       
-      -- Call the PR API
-      require("avante.api").pr(user_input)
+      local api_module = require("avante.api")
+      if not api_module or not api_module.pr then
+        vim.notify("Error: avante.api or avante.api.pr not found", vim.log.levels.ERROR, {title = "Avante Debug"})
+        return
+      end
+
+      local status, err = pcall(api_module.pr, user_input)
+      if not status then
+        vim.notify("Error in avante.api.pr: " .. tostring(err), vim.log.levels.ERROR, {title = "Avante Debug"})
+      else
+        vim.notify("@pr_debug executed successfully", vim.log.levels.INFO, {title = "Avante Debug"})
+      end
     end,
   })
 
