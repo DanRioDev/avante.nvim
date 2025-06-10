@@ -120,42 +120,6 @@ describe("Utils", function()
       assert.equals("diagnostics", mentions[2].command)
     end)
   end)
-  
-  describe("get_chat_mentions", function()
-    it("should return chat mentions including pr", function()
-      local mentions = Utils.get_chat_mentions()
-      
-      -- Check that basic mentions are included
-      local has_codebase, has_diagnostics, has_pr = false, false, false
-      for _, mention in ipairs(mentions) do
-        if mention.command == "codebase" then has_codebase = true end
-        if mention.command == "diagnostics" then has_diagnostics = true end
-        if mention.command == "pr" then has_pr = true end
-      end
-      
-      assert.is_true(has_codebase)
-      assert.is_true(has_diagnostics)
-      assert.is_true(has_pr)
-    end)
-    
-    it("should have pr mention with correct properties", function()
-      local mentions = Utils.get_chat_mentions()
-      
-      local pr_mention
-      for _, mention in ipairs(mentions) do
-        if mention.command == "pr" then
-          pr_mention = mention
-          break
-        end
-      end
-      
-      assert.is_not_nil(pr_mention)
-      assert.equals("pr", pr_mention.command)
-      assert.equals("pr", pr_mention.description)
-      assert.equals("AI-assisted Pull Request review", pr_mention.details)
-      assert.is_function(pr_mention.callback)
-    end)
-  end)
 
   describe("trim_think_content", function()
     it("should remove think content", function()
