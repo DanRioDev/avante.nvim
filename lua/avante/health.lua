@@ -81,6 +81,11 @@ function M.check_pr_extension()
     return
   end
   
+  if not pr_ext.is_available then
+    H.error("PR extension is_available function not found")
+    return
+  end
+  
   local available, error_msg = pr_ext.is_available()
   if available then
     H.ok("PR extension is available (Octo plugin and gh CLI found)")

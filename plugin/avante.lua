@@ -169,10 +169,12 @@ cmd("History", function() require("avante.api").select_history() end, { desc = "
 cmd("Stop", function() require("avante.api").stop() end, { desc = "avante: stop current AI request" })
 
 -- Only register PR command if dependencies are available
-local pr_available, _ = pcall(function()
-  local pr_ext = require("avante.extensions.pr")
-  return pr_ext.is_available()
-end)
+local pr_available = false
+local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
+if pr_ext_ok and pr_ext.is_available then
+  local available, _ = pr_ext.is_available()
+  pr_available = available
+end
 
 if pr_available then
   cmd("PR", function(opts)
