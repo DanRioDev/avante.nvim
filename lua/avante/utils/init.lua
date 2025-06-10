@@ -961,7 +961,7 @@ function M.get_chat_mentions()
     callback = function(sidebar) 
       -- Extract user input from the current line
       local current_line = vim.api.nvim_get_current_line()
-      local user_input = current_line:match("@pr%s+(.*)") or ""
+      local user_input = current_line:match("@pr%s*(.*)") or ""
       user_input = vim.trim(user_input)
       if user_input == "" then user_input = nil end
       
