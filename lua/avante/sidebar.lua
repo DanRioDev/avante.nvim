@@ -13,6 +13,7 @@ local Llm = require("avante.llm")
 local Utils = require("avante.utils")
 local Highlights = require("avante.highlights")
 local RepoMap = require("avante.repo_map")
+local PullRequest = require("avante.extensions.pr")
 local FileSelector = require("avante.file_selector")
 local LLMTools = require("avante.llm_tools")
 local HistoryMessage = require("avante.history_message")
@@ -2429,6 +2430,13 @@ function Sidebar:get_generate_prompts_options(request, cb)
 
   local project_context = mentions.enable_project_context and file_ext and RepoMap.get_repo_map(file_ext) or nil
 
+  local pullrequest_context = mentions.enable_pullrequest_context
+      and PullRequest.is_available()
+      and PullRequest.review_pr(request, function(success, result)
+        if success then return result end
+      end)
+    or nil
+
   local diagnostics = nil
   if mentions.enable_diagnostics then
     if self.code ~= nil and self.code.bufnr ~= nil and self.code.selection ~= nil then
@@ -2438,128 +2446,67 @@ function Sidebar:get_generate_prompts_options(request, cb)
     end
   end
 
-  -- Helper function to build prompts options with pr_info
-  local function build_prompts_opts(pr_info)
-    local history_messages = self:get_history_messages_for_api()
+  local history_messages = self:get_history_messages_for_api()
 
-    local tools = vim.deepcopy(LLMTools.get_tools(request, history_messages))
-    table.insert(tools, {
-      name = "add_file_to_context",
-      description = "Add a file to the context",
-      ---@type AvanteLLMToolFunc<{ rel_path: string }>
-      func = function(input)
-        self.file_selector:add_selected_file(input.rel_path)
-        return "Added file to context", nil
-      end,
-      param = {
-        type = "table",
-        fields = { { name = "rel_path", description = "Relative path to the file", type = "string" } },
-      },
-      returns = {},
-    })
+  local tools = vim.deepcopy(LLMTools.get_tools(request, history_messages))
+  table.insert(tools, {
+    name = "add_file_to_context",
+    description = "Add a file to the context",
+    ---@type AvanteLLMToolFunc<{ rel_path: string }>
+    func = function(input)
+      self.file_selector:add_selected_file(input.rel_path)
+      return "Added file to context", nil
+    end,
+    param = {
+      type = "table",
+      fields = { { name = "rel_path", description = "Relative path to the file", type = "string" } },
+    },
+    returns = {},
+  })
 
-    table.insert(tools, {
-      name = "remove_file_from_context",
-      description = "Remove a file from the context",
-      ---@type AvanteLLMToolFunc<{ rel_path: string }>
-      func = function(input)
-        self.file_selector:remove_selected_file(input.rel_path)
-        return "Removed file from context", nil
-      end,
-      param = {
-        type = "table",
-        fields = { { name = "rel_path", description = "Relative path to the file", type = "string" } },
-      },
-      returns = {},
-    })
+  table.insert(tools, {
+    name = "remove_file_from_context",
+    description = "Remove a file from the context",
+    ---@type AvanteLLMToolFunc<{ rel_path: string }>
+    func = function(input)
+      self.file_selector:remove_selected_file(input.rel_path)
+      return "Removed file from context", nil
+    end,
+    param = {
+      type = "table",
+      fields = { { name = "rel_path", description = "Relative path to the file", type = "string" } },
+    },
+    returns = {},
+  })
 
-    local selected_filepaths = self.file_selector.selected_filepaths or {}
+  local selected_filepaths = self.file_selector.selected_filepaths or {}
 
-    local ask = self.ask_opts.ask
-    if ask == nil then ask = true end
+  local ask = self.ask_opts.ask
+  if ask == nil then ask = true end
 
-    ---@type AvanteGeneratePromptsOptions
-    local prompts_opts = {
-      ask = ask,
-      project_context = vim.json.encode(project_context),
-      selected_filepaths = selected_filepaths,
-      recently_viewed_files = Utils.get_recent_filepaths(),
-      diagnostics = vim.json.encode(diagnostics),
-      pr_info = pr_info,
-      history_messages = history_messages,
-      code_lang = filetype,
-      selected_code = selected_code,
-      tools = tools,
+  ---@type AvanteGeneratePromptsOptions
+  local prompts_opts = {
+    ask = ask,
+    project_context = vim.json.encode(project_context),
+    pullrequest_context = pullrequest_context,
+    selected_filepaths = selected_filepaths,
+    recently_viewed_files = Utils.get_recent_filepaths(),
+    diagnostics = vim.json.encode(diagnostics),
+    history_messages = history_messages,
+    code_lang = filetype,
+    selected_code = selected_code,
+    tools = tools,
+  }
+
+  if self.chat_history.system_prompt then
+    prompts_opts.prompt_opts = {
+      system_prompt = self.chat_history.system_prompt,
+      messages = history_messages,
     }
-
-    if self.chat_history.system_prompt then
-      prompts_opts.prompt_opts = {
-        system_prompt = self.chat_history.system_prompt,
-        messages = history_messages,
-      }
-    end
-
-    if self.chat_history.memory then prompts_opts.memory = self.chat_history.memory.content end
-
-    return prompts_opts
   end
 
-  if mentions.enable_pr_context then
-    -- First check if PR context is already cached
-    local pr_manager_ok, pr_manager = pcall(require, "avante.pr_context_manager")
-    if pr_manager_ok then
-      local cached_pr = pr_manager.get_active_pr_details()
-      if cached_pr then
-        -- Use cached PR context, build it for chat usage
-        local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
-        local pr_info = nil
-        if pr_ext_ok and pr_ext.build_pr_context_for_chat then
-          pr_info = pr_ext.build_pr_context_for_chat(cached_pr, mentions.new_content)
-        else
-          -- Fallback to raw cached data
-          pr_info = cached_pr
-        end
-        
-        local prompts_opts = build_prompts_opts(pr_info)
-        cb(prompts_opts)
-        return
-      end
-    end
-    
-    -- No cached context, try to load fresh PR context
-    local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
-    if pr_ext_ok and pr_ext.get_pr_context then
-      pr_ext.get_pr_context(function(success, result)
-        local pr_info = nil
-        if success then
-          -- Store in context manager for future use
-          if pr_manager_ok then
-            pr_manager.set_active_pr_details(result)
-          end
-          
-          -- Build PR context for chat usage with the same logic as cached case
-          if pr_ext.build_pr_context_for_chat then
-            pr_info = pr_ext.build_pr_context_for_chat(result, mentions.new_content)
-          else
-            -- Fallback to raw fetched data
-            pr_info = result
-          end
-        else
-          Utils.warn("Failed to get PR context: " .. (result or "Unknown error"))
-        end
-        
-        local prompts_opts = build_prompts_opts(pr_info)
-        cb(prompts_opts)
-      end)
-      return -- Early return since we're handling this asynchronously
-    else
-      -- PR extension not available, continue without PR context
-      Utils.warn("PR extension not available")
-    end
-  end
+  if self.chat_history.memory then prompts_opts.memory = self.chat_history.memory.content end
 
-  -- Synchronous path (no PR context needed)
-  local prompts_opts = build_prompts_opts(nil)
   cb(prompts_opts)
 end
 
@@ -2582,9 +2529,10 @@ function Sidebar:create_input_container()
       self:update_content("Please open a file first before using @codebase", { focus = false, scroll = false })
       return
     end
-    if request:match("@pr") then
-      -- PR context will be fetched when building prompts options
-      -- No early validation needed since we fetch fresh context each time
+
+    if request:match("@pr") and not PullRequest.is_available() then
+      self:update_content("This branch does not have a pull request associated with it, or you don't have Github CLI.")
+      return
     end
 
     if request:sub(1, 1) == "/" then
@@ -2829,12 +2777,6 @@ function Sidebar:create_input_container()
     local lines = api.nvim_buf_get_lines(self.input_container.bufnr, 0, -1, false)
     local request = table.concat(lines, "\n")
     if request == "" then return end
-    
-    -- Check if request would become empty after mention processing but still needs handling
-    local mentions = Utils.extract_mentions(request)
-    if mentions.new_content == "" and not (mentions.enable_pr_context or mentions.enable_project_context or mentions.enable_diagnostics) then
-      return
-    end
     api.nvim_buf_set_lines(self.input_container.bufnr, 0, -1, false, {})
     api.nvim_win_set_cursor(self.input_container.winid, { 1, 0 })
     handle_submit(request)
