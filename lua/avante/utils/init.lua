@@ -895,21 +895,33 @@ function M.path_exists(path) return vim.loop.fs_stat(path) ~= nil end
 function M.is_first_letter_uppercase(str) return string.match(str, "^[A-Z]") ~= nil end
 
 ---@param content string
----@return { new_content: string, enable_project_context: boolean, enable_diagnostics: boolean }
+---@return { new_content: string, enable_project_context: boolean, enable_diagnostics: boolean, enable_pr_context: boolean }
 function M.extract_mentions(content)
   -- if content contains @codebase, enable project context and remove @codebase
   local new_content = content
   local enable_project_context = false
   local enable_diagnostics = false
+  local enable_pr_context = false
+  
   if content:match("@codebase") then
     enable_project_context = true
-    new_content = content:gsub("@codebase", "")
+    new_content = new_content:gsub("@codebase", "")
   end
   if content:match("@diagnostics") then enable_diagnostics = true end
+  if content:match("@pr") then
+    enable_pr_context = true
+    new_content = new_content:gsub("@pr", "")
+  end
+  
+  -- Clean up potential extra spaces resulting from gsub
+  new_content = new_content:match("^%s*(.-)%s*$") or "" -- Trim leading/trailing whitespace
+  new_content = new_content:gsub("%s%s+", " ") -- Condense multiple spaces
+  
   return {
     new_content = new_content,
     enable_project_context = enable_project_context,
     enable_diagnostics = enable_diagnostics,
+    enable_pr_context = enable_pr_context,
   }
 end
 
@@ -925,6 +937,11 @@ function M.get_mentions()
       description = "diagnostics",
       command = "diagnostics",
       details = "diagnostics",
+    },
+    {
+      description = "pr",
+      command = "pr",
+      details = "pull request context",
     },
   }
 end
@@ -952,48 +969,6 @@ function M.get_chat_mentions()
     command = "buffers",
     details = "add open buffers to the chat context",
     callback = function(sidebar) sidebar.file_selector:add_buffer_files() end,
-  })
-
-  table.insert(mentions, {
-    description = "pr_debug",
-    command = "pr_debug",
-    details = "AI-assisted Pull Request review",
-    callback = function(sidebar) 
-      vim.notify("@pr_debug callback triggered - Starting execution", vim.log.levels.INFO, {title = "Avante Debug"})
-      vim.notify("@pr_debug callback - Function: get_chat_mentions.pr_debug", vim.log.levels.INFO, {title = "Avante Debug"})
-      vim.notify("@pr_debug callback - Sidebar received: " .. (sidebar and "valid" or "nil"), vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      -- Extract user input from the current line
-      local current_line = vim.api.nvim_get_current_line()
-      vim.notify("@pr_debug callback - Current line captured: '" .. current_line .. "'", vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      local pattern = "@pr_debug%s*(.*)" -- Adjusted for new command
-      vim.notify("@pr_debug callback - Using pattern: '" .. pattern .. "'", vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      local user_input = current_line:match(pattern) or ""
-      vim.notify("@pr_debug callback - Raw pattern match result: '" .. user_input .. "'", vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      user_input = vim.trim(user_input)
-      if user_input == "" then user_input = nil end
-      vim.notify("@pr_debug callback - Final user_input after trimming: " .. (user_input or "nil"), vim.log.levels.INFO, {title = "Avante Debug"})
-
-      vim.notify("@pr_debug callback - About to call avante.api.pr with input: " .. (user_input or "nil"), vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      local api_module = require("avante.api")
-      if not api_module or not api_module.pr then
-        vim.notify("@pr_debug callback - ERROR: avante.api or avante.api.pr not found", vim.log.levels.ERROR, {title = "Avante Debug"})
-        return
-      end
-      vim.notify("@pr_debug callback - avante.api.pr function found successfully", vim.log.levels.INFO, {title = "Avante Debug"})
-
-      local status, err = pcall(api_module.pr, user_input)
-      if not status then
-        vim.notify("@pr_debug callback - ERROR in avante.api.pr: " .. tostring(err), vim.log.levels.ERROR, {title = "Avante Debug"})
-      else
-        vim.notify("@pr_debug callback - avante.api.pr called successfully", vim.log.levels.INFO, {title = "Avante Debug"})
-      end
-      vim.notify("@pr_debug callback - Execution completed", vim.log.levels.INFO, {title = "Avante Debug"})
-    end,
   })
 
   return mentions

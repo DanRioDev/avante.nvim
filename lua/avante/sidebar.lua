@@ -2438,66 +2438,96 @@ function Sidebar:get_generate_prompts_options(request, cb)
     end
   end
 
-  local history_messages = self:get_history_messages_for_api()
+  -- Helper function to build prompts options with pr_info
+  local function build_prompts_opts(pr_info)
+    local history_messages = self:get_history_messages_for_api()
 
-  local tools = vim.deepcopy(LLMTools.get_tools(request, history_messages))
-  table.insert(tools, {
-    name = "add_file_to_context",
-    description = "Add a file to the context",
-    ---@type AvanteLLMToolFunc<{ rel_path: string }>
-    func = function(input)
-      self.file_selector:add_selected_file(input.rel_path)
-      return "Added file to context", nil
-    end,
-    param = {
-      type = "table",
-      fields = { { name = "rel_path", description = "Relative path to the file", type = "string" } },
-    },
-    returns = {},
-  })
+    local tools = vim.deepcopy(LLMTools.get_tools(request, history_messages))
+    table.insert(tools, {
+      name = "add_file_to_context",
+      description = "Add a file to the context",
+      ---@type AvanteLLMToolFunc<{ rel_path: string }>
+      func = function(input)
+        self.file_selector:add_selected_file(input.rel_path)
+        return "Added file to context", nil
+      end,
+      param = {
+        type = "table",
+        fields = { { name = "rel_path", description = "Relative path to the file", type = "string" } },
+      },
+      returns = {},
+    })
 
-  table.insert(tools, {
-    name = "remove_file_from_context",
-    description = "Remove a file from the context",
-    ---@type AvanteLLMToolFunc<{ rel_path: string }>
-    func = function(input)
-      self.file_selector:remove_selected_file(input.rel_path)
-      return "Removed file from context", nil
-    end,
-    param = {
-      type = "table",
-      fields = { { name = "rel_path", description = "Relative path to the file", type = "string" } },
-    },
-    returns = {},
-  })
+    table.insert(tools, {
+      name = "remove_file_from_context",
+      description = "Remove a file from the context",
+      ---@type AvanteLLMToolFunc<{ rel_path: string }>
+      func = function(input)
+        self.file_selector:remove_selected_file(input.rel_path)
+        return "Removed file from context", nil
+      end,
+      param = {
+        type = "table",
+        fields = { { name = "rel_path", description = "Relative path to the file", type = "string" } },
+      },
+      returns = {},
+    })
 
-  local selected_filepaths = self.file_selector.selected_filepaths or {}
+    local selected_filepaths = self.file_selector.selected_filepaths or {}
 
-  local ask = self.ask_opts.ask
-  if ask == nil then ask = true end
+    local ask = self.ask_opts.ask
+    if ask == nil then ask = true end
 
-  ---@type AvanteGeneratePromptsOptions
-  local prompts_opts = {
-    ask = ask,
-    project_context = vim.json.encode(project_context),
-    selected_filepaths = selected_filepaths,
-    recently_viewed_files = Utils.get_recent_filepaths(),
-    diagnostics = vim.json.encode(diagnostics),
-    history_messages = history_messages,
-    code_lang = filetype,
-    selected_code = selected_code,
-    tools = tools,
-  }
-
-  if self.chat_history.system_prompt then
-    prompts_opts.prompt_opts = {
-      system_prompt = self.chat_history.system_prompt,
-      messages = history_messages,
+    ---@type AvanteGeneratePromptsOptions
+    local prompts_opts = {
+      ask = ask,
+      project_context = vim.json.encode(project_context),
+      selected_filepaths = selected_filepaths,
+      recently_viewed_files = Utils.get_recent_filepaths(),
+      diagnostics = vim.json.encode(diagnostics),
+      pr_info = pr_info,
+      history_messages = history_messages,
+      code_lang = filetype,
+      selected_code = selected_code,
+      tools = tools,
     }
+
+    if self.chat_history.system_prompt then
+      prompts_opts.prompt_opts = {
+        system_prompt = self.chat_history.system_prompt,
+        messages = history_messages,
+      }
+    end
+
+    if self.chat_history.memory then prompts_opts.memory = self.chat_history.memory.content end
+
+    return prompts_opts
   end
 
-  if self.chat_history.memory then prompts_opts.memory = self.chat_history.memory.content end
+  if mentions.enable_pr_context then
+    -- Get PR context dynamically from AvantePR command
+    local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
+    if pr_ext_ok and pr_ext.get_pr_context then
+      pr_ext.get_pr_context(function(success, result)
+        local pr_info = nil
+        if success then
+          pr_info = result
+        else
+          Utils.warn("Failed to get PR context: " .. (result or "Unknown error"))
+        end
+        
+        local prompts_opts = build_prompts_opts(pr_info)
+        cb(prompts_opts)
+      end)
+      return -- Early return since we're handling this asynchronously
+    else
+      -- PR extension not available, continue without PR context
+      Utils.warn("PR extension not available")
+    end
+  end
 
+  -- Synchronous path (no PR context needed)
+  local prompts_opts = build_prompts_opts(nil)
   cb(prompts_opts)
 end
 
@@ -2519,6 +2549,10 @@ function Sidebar:create_input_container()
     if request:match("@codebase") and not vim.fn.expand("%:e") then
       self:update_content("Please open a file first before using @codebase", { focus = false, scroll = false })
       return
+    end
+    if request:match("@pr") then
+      -- PR context will be fetched when building prompts options
+      -- No early validation needed since we fetch fresh context each time
     end
 
     if request:sub(1, 1) == "/" then

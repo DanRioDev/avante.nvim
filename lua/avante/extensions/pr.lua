@@ -201,10 +201,9 @@ local function construct_system_prompt(pr_data, diff_content, user_input)
   return table.concat(prompt_parts, "\n")
 end
 
----Main function to handle PR review
----@param user_input? string Optional user input following @pr command
----@param callback function Callback function to handle the result
-function M.review_pr(user_input, callback)
+---Get PR context data for @pr mentions
+---@param callback function Callback function to handle the result (success: boolean, data: table|string)
+function M.get_pr_context(callback)
   -- Check dependencies
   local deps_ok, deps_err = check_dependencies()
   if not deps_ok then
@@ -233,10 +232,48 @@ function M.review_pr(user_input, callback)
     return
   end
   
-  -- Construct system prompt
-  local system_prompt = construct_system_prompt(pr_data, diff_content, user_input)
+  -- Return structured PR context
+  local pr_context = {
+    number = pr_data.number,
+    title = pr_data.title,
+    author = pr_data.author and pr_data.author.login,
+    body = pr_data.body,
+    url = pr_data.url,
+    base_ref = pr_data.base and pr_data.base.ref,
+    head_ref = pr_data.head and pr_data.head.ref,
+    raw_diff = diff_content,
+  }
   
-  callback(true, system_prompt)
+  callback(true, pr_context)
+end
+
+---Main function to handle PR review
+---@param user_input? string Optional user input following @pr command
+---@param callback function Callback function to handle the result
+function M.review_pr(user_input, callback)
+  M.get_pr_context(function(success, result)
+    if not success then
+      callback(false, result)
+      return
+    end
+    
+    -- Store PR context for backward compatibility
+    local PRContextManager = require("avante.pr_context_manager")
+    PRContextManager.set_active_pr_details(result)
+    
+    -- Construct system prompt
+    local system_prompt = construct_system_prompt({
+      number = result.number,
+      title = result.title,
+      author = { login = result.author },
+      body = result.body,
+      url = result.url,
+      base = { ref = result.base_ref },
+      head = { ref = result.head_ref },
+    }, result.raw_diff, user_input)
+    
+    callback(true, system_prompt)
+  end)
 end
 
 return M
