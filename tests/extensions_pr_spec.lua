@@ -162,4 +162,62 @@ describe("PR Extension", function()
       assert.has_match("Not in a Git repository", error_msg)
     end)
   end)
+  
+  describe("build_pr_context_for_chat", function()
+    local mock_pr_details = {
+      number = 123,
+      title = "Test PR",
+      author = "testuser",
+      body = "Test description",
+      url = "https://github.com/test/test/pull/123",
+      base_ref = "main",
+      head_ref = "feature-branch",
+      raw_diff = "diff content here"
+    }
+    
+    it("should handle empty user input with default review flag", function()
+      local result = PR.build_pr_context_for_chat(mock_pr_details, "")
+      
+      assert.is_not_nil(result)
+      assert.is_nil(result.user_request)
+      assert.is_true(result.default_review)
+      assert.equals(123, result.number)
+      assert.equals("Test PR", result.title)
+    end)
+    
+    it("should handle whitespace-only user input with default review flag", function()
+      local result = PR.build_pr_context_for_chat(mock_pr_details, "   \t  ")
+      
+      assert.is_not_nil(result)
+      assert.is_nil(result.user_request)
+      assert.is_true(result.default_review)
+    end)
+    
+    it("should handle valid user input without default review flag", function()
+      local result = PR.build_pr_context_for_chat(mock_pr_details, "Summarize this PR")
+      
+      assert.is_not_nil(result)
+      assert.equals("Summarize this PR", result.user_request)
+      assert.is_false(result.default_review)
+    end)
+    
+    it("should handle nil pr_details", function()
+      local result = PR.build_pr_context_for_chat(nil, "test")
+      
+      assert.is_nil(result)
+    end)
+    
+    it("should preserve all PR details fields", function()
+      local result = PR.build_pr_context_for_chat(mock_pr_details, "test")
+      
+      assert.equals(mock_pr_details.number, result.number)
+      assert.equals(mock_pr_details.title, result.title)
+      assert.equals(mock_pr_details.author, result.author)
+      assert.equals(mock_pr_details.body, result.body)
+      assert.equals(mock_pr_details.url, result.url)
+      assert.equals(mock_pr_details.base_ref, result.base_ref)
+      assert.equals(mock_pr_details.head_ref, result.head_ref)
+      assert.equals(mock_pr_details.raw_diff, result.raw_diff)
+    end)
+  end)
 end)

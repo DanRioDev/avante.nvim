@@ -2514,7 +2514,7 @@ function Sidebar:get_generate_prompts_options(request, cb)
         local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
         local pr_info = nil
         if pr_ext_ok and pr_ext.build_pr_context_for_chat then
-          pr_info = pr_ext.build_pr_context_for_chat(cached_pr, request)
+          pr_info = pr_ext.build_pr_context_for_chat(cached_pr, mentions.new_content)
         else
           -- Fallback to raw cached data
           pr_info = cached_pr
@@ -2532,10 +2532,17 @@ function Sidebar:get_generate_prompts_options(request, cb)
       pr_ext.get_pr_context(function(success, result)
         local pr_info = nil
         if success then
-          pr_info = result
           -- Store in context manager for future use
           if pr_manager_ok then
             pr_manager.set_active_pr_details(result)
+          end
+          
+          -- Build PR context for chat usage with the same logic as cached case
+          if pr_ext.build_pr_context_for_chat then
+            pr_info = pr_ext.build_pr_context_for_chat(result, mentions.new_content)
+          else
+            -- Fallback to raw fetched data
+            pr_info = result
           end
         else
           Utils.warn("Failed to get PR context: " .. (result or "Unknown error"))
