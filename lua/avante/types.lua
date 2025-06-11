@@ -341,6 +341,7 @@ vim.g.avante_login = vim.g.avante_login
 ---@field selected_files AvanteSelectedFile[] | nil
 ---@field selected_filepaths string[] | nil
 ---@field diagnostics string | nil
+---@field pr_info string | nil
 ---@field history_messages avante.HistoryMessage[] | nil
 ---@field memory string | nil
 ---

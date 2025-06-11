@@ -895,21 +895,33 @@ function M.path_exists(path) return vim.loop.fs_stat(path) ~= nil end
 function M.is_first_letter_uppercase(str) return string.match(str, "^[A-Z]") ~= nil end
 
 ---@param content string
----@return { new_content: string, enable_project_context: boolean, enable_diagnostics: boolean }
+---@return { new_content: string, enable_project_context: boolean, enable_diagnostics: boolean, enable_pr_context: boolean }
 function M.extract_mentions(content)
   -- if content contains @codebase, enable project context and remove @codebase
   local new_content = content
   local enable_project_context = false
   local enable_diagnostics = false
+  local enable_pr_context = false
+  
   if content:match("@codebase") then
     enable_project_context = true
-    new_content = content:gsub("@codebase", "")
+    new_content = new_content:gsub("@codebase", "")
   end
   if content:match("@diagnostics") then enable_diagnostics = true end
+  if content:match("@pr") then
+    enable_pr_context = true
+    new_content = new_content:gsub("@pr", "")
+  end
+  
+  -- Clean up potential extra spaces resulting from gsub
+  new_content = new_content:match("^%s*(.-)%s*$") or "" -- Trim leading/trailing whitespace
+  new_content = new_content:gsub("%s%s+", " ") -- Condense multiple spaces
+  
   return {
     new_content = new_content,
     enable_project_context = enable_project_context,
     enable_diagnostics = enable_diagnostics,
+    enable_pr_context = enable_pr_context,
   }
 end
 
@@ -925,6 +937,11 @@ function M.get_mentions()
       description = "diagnostics",
       command = "diagnostics",
       details = "diagnostics",
+    },
+    {
+      description = "pr",
+      command = "pr",
+      details = "pull request context",
     },
   }
 end

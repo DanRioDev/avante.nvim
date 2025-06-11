@@ -17,6 +17,7 @@ local FileSelector = require("avante.file_selector")
 local LLMTools = require("avante.llm_tools")
 local HistoryMessage = require("avante.history_message")
 local Line = require("avante.ui.line")
+local PRContextManager = require("avante.pr_context_manager")
 
 local RESULT_BUF_NAME = "AVANTE_RESULT"
 local VIEW_BUFFER_UPDATED_PATTERN = "AvanteViewBufferUpdated"
@@ -2438,6 +2439,14 @@ function Sidebar:get_generate_prompts_options(request, cb)
     end
   end
 
+  local pr_info = nil
+  if mentions.enable_pr_context then
+    local active_pr_data = PRContextManager.get_active_pr_details()
+    if active_pr_data then
+      pr_info = active_pr_data
+    end
+  end
+
   local history_messages = self:get_history_messages_for_api()
 
   local tools = vim.deepcopy(LLMTools.get_tools(request, history_messages))
@@ -2483,6 +2492,7 @@ function Sidebar:get_generate_prompts_options(request, cb)
     selected_filepaths = selected_filepaths,
     recently_viewed_files = Utils.get_recent_filepaths(),
     diagnostics = vim.json.encode(diagnostics),
+    pr_info = pr_info and vim.json.encode(pr_info) or nil,
     history_messages = history_messages,
     code_lang = filetype,
     selected_code = selected_code,
@@ -2519,6 +2529,13 @@ function Sidebar:create_input_container()
     if request:match("@codebase") and not vim.fn.expand("%:e") then
       self:update_content("Please open a file first before using @codebase", { focus = false, scroll = false })
       return
+    end
+    if request:match("@pr") then
+      local active_pr_data = PRContextManager.get_active_pr_details()
+      if not active_pr_data then
+        self:update_content("No active PR context found for @pr. Please use @pr_debug or an AvantePR command to load a PR first.", { focus = false, scroll = false })
+        return
+      end
     end
 
     if request:sub(1, 1) == "/" then

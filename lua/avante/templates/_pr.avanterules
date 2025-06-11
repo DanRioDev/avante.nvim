@@ -1,0 +1,9 @@
+{%- if pr_info -%}
+<pr_context>
+The user has referenced an active Pull Request using @pr. Here is the relevant PR information:
+
+{{pr_info}}
+
+Use this context to understand the specific changes, files, and discussion points related to this Pull Request when responding to the user's query.
+</pr_context>
+{%- endif %}

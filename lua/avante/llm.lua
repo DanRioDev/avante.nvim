@@ -197,6 +197,7 @@ function M.generate_prompts(opts)
     recently_viewed_files = opts.recently_viewed_files,
     project_context = opts.project_context,
     diagnostics = opts.diagnostics,
+    pr_info = opts.pr_info,
     system_info = system_info,
     model_name = provider.model or "unknown",
     memory = opts.memory,
@@ -234,6 +235,13 @@ function M.generate_prompts(opts)
     local diagnostics = Path.prompts.render_file("_diagnostics.avanterules", template_opts)
     if diagnostics ~= "" then
       table.insert(context_messages, { role = "user", content = diagnostics, visible = false, is_context = true })
+    end
+  end
+
+  if opts.pr_info ~= nil and opts.pr_info ~= "" and opts.pr_info ~= "null" then
+    local pr_context = Path.prompts.render_file("_pr.avanterules", template_opts)
+    if pr_context ~= "" then
+      table.insert(context_messages, { role = "user", content = pr_context, visible = false, is_context = true })
     end
   end
 
