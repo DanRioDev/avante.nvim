@@ -233,6 +233,20 @@ function M.review_pr(user_input, callback)
     return
   end
   
+  -- Store PR context for @pr mention usage
+  local PRContextManager = require("avante.pr_context_manager")
+  local pr_context = {
+    number = pr_data.number,
+    title = pr_data.title,
+    author = pr_data.author and pr_data.author.login,
+    body = pr_data.body,
+    url = pr_data.url,
+    base_ref = pr_data.base and pr_data.base.ref,
+    head_ref = pr_data.head and pr_data.head.ref,
+    raw_diff = diff_content,
+  }
+  PRContextManager.set_active_pr_details(pr_context)
+  
   -- Construct system prompt
   local system_prompt = construct_system_prompt(pr_data, diff_content, user_input)
   

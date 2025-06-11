@@ -154,15 +154,17 @@ describe("Utils", function()
       local mentions = Utils.get_chat_mentions()
       
       -- Check that basic mentions are included
-      local has_codebase, has_diagnostics, has_pr_debug = false, false, false
+      local has_codebase, has_diagnostics, has_pr, has_pr_debug = false, false, false, false
       for _, mention in ipairs(mentions) do
         if mention.command == "codebase" then has_codebase = true end
         if mention.command == "diagnostics" then has_diagnostics = true end
+        if mention.command == "pr" then has_pr = true end
         if mention.command == "pr_debug" then has_pr_debug = true end
       end
       
       assert.is_true(has_codebase)
       assert.is_true(has_diagnostics)
+      assert.is_true(has_pr)
       assert.is_true(has_pr_debug)
     end)
     
