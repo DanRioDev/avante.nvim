@@ -247,6 +247,37 @@ function M.get_pr_context(callback)
   callback(true, pr_context)
 end
 
+---Build PR context for chat usage from cached PR details
+---@param pr_details AvantePRDetails The cached PR details
+---@param user_input? string Optional user input (after @pr removal)
+---@return table PR context suitable for chat usage
+function M.build_pr_context_for_chat(pr_details, user_input)
+  if not pr_details then
+    return nil
+  end
+  
+  -- Handle empty or whitespace-only user input by using default review prompt
+  local processed_user_input = user_input and user_input:match("^%s*(.-)%s*$") or ""
+  local has_user_request = processed_user_input ~= ""
+  
+  -- Create a context structure similar to what get_pr_context returns
+  -- but optimized for chat usage rather than full system prompts
+  local context = {
+    number = pr_details.number,
+    title = pr_details.title,
+    author = pr_details.author,
+    body = pr_details.body,
+    url = pr_details.url,
+    base_ref = pr_details.base_ref,
+    head_ref = pr_details.head_ref,
+    raw_diff = pr_details.raw_diff,
+    user_request = has_user_request and processed_user_input or nil,
+    default_review = not has_user_request, -- Flag to indicate default review should be used
+  }
+  
+  return context
+end
+
 ---Main function to handle PR review
 ---@param user_input? string Optional user input following @pr command
 ---@param callback function Callback function to handle the result
