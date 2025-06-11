@@ -2492,7 +2492,7 @@ function Sidebar:get_generate_prompts_options(request, cb)
     selected_filepaths = selected_filepaths,
     recently_viewed_files = Utils.get_recent_filepaths(),
     diagnostics = vim.json.encode(diagnostics),
-    pr_info = pr_info and vim.json.encode(pr_info) or nil,
+    pr_info = pr_info,
     history_messages = history_messages,
     code_lang = filetype,
     selected_code = selected_code,
@@ -2533,7 +2533,7 @@ function Sidebar:create_input_container()
     if request:match("@pr") then
       local active_pr_data = PRContextManager.get_active_pr_details()
       if not active_pr_data then
-        self:update_content("No active PR context found for @pr. Please use @pr_debug or an AvantePR command to load a PR first.", { focus = false, scroll = false })
+        self:update_content("No active PR context found for @pr. Please use AvantePR command to load a PR first.", { focus = false, scroll = false })
         return
       end
     end

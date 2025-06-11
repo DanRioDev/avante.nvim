@@ -971,48 +971,6 @@ function M.get_chat_mentions()
     callback = function(sidebar) sidebar.file_selector:add_buffer_files() end,
   })
 
-  table.insert(mentions, {
-    description = "pr_debug",
-    command = "pr_debug",
-    details = "AI-assisted Pull Request review",
-    callback = function(sidebar) 
-      vim.notify("@pr_debug callback triggered - Starting execution", vim.log.levels.INFO, {title = "Avante Debug"})
-      vim.notify("@pr_debug callback - Function: get_chat_mentions.pr_debug", vim.log.levels.INFO, {title = "Avante Debug"})
-      vim.notify("@pr_debug callback - Sidebar received: " .. (sidebar and "valid" or "nil"), vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      -- Extract user input from the current line
-      local current_line = vim.api.nvim_get_current_line()
-      vim.notify("@pr_debug callback - Current line captured: '" .. current_line .. "'", vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      local pattern = "@pr_debug%s*(.*)" -- Adjusted for new command
-      vim.notify("@pr_debug callback - Using pattern: '" .. pattern .. "'", vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      local user_input = current_line:match(pattern) or ""
-      vim.notify("@pr_debug callback - Raw pattern match result: '" .. user_input .. "'", vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      user_input = vim.trim(user_input)
-      if user_input == "" then user_input = nil end
-      vim.notify("@pr_debug callback - Final user_input after trimming: " .. (user_input or "nil"), vim.log.levels.INFO, {title = "Avante Debug"})
-
-      vim.notify("@pr_debug callback - About to call avante.api.pr with input: " .. (user_input or "nil"), vim.log.levels.INFO, {title = "Avante Debug"})
-      
-      local api_module = require("avante.api")
-      if not api_module or not api_module.pr then
-        vim.notify("@pr_debug callback - ERROR: avante.api or avante.api.pr not found", vim.log.levels.ERROR, {title = "Avante Debug"})
-        return
-      end
-      vim.notify("@pr_debug callback - avante.api.pr function found successfully", vim.log.levels.INFO, {title = "Avante Debug"})
-
-      local status, err = pcall(api_module.pr, user_input)
-      if not status then
-        vim.notify("@pr_debug callback - ERROR in avante.api.pr: " .. tostring(err), vim.log.levels.ERROR, {title = "Avante Debug"})
-      else
-        vim.notify("@pr_debug callback - avante.api.pr called successfully", vim.log.levels.INFO, {title = "Avante Debug"})
-      end
-      vim.notify("@pr_debug callback - Execution completed", vim.log.levels.INFO, {title = "Avante Debug"})
-    end,
-  })
-
   return mentions
 end
 

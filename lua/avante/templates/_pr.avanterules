@@ -2,7 +2,25 @@
 <pr_context>
 The user has referenced an active Pull Request using @pr. Here is the relevant PR information:
 
-{{pr_info}}
+**PR #{{pr_info.number}}**: {{pr_info.title}}
+{%- if pr_info.author %}
+**Author**: {{pr_info.author}}
+{%- endif %}
+{%- if pr_info.url %}
+**URL**: {{pr_info.url}}
+{%- endif %}
+{%- if pr_info.body and pr_info.body ~= "" %}
+
+**Description**: 
+{{pr_info.body}}
+{%- endif %}
+{%- if pr_info.raw_diff %}
+
+**Changes**:
+```diff
+{{pr_info.raw_diff}}
+```
+{%- endif %}
 
 Use this context to understand the specific changes, files, and discussion points related to this Pull Request when responding to the user's query.
 </pr_context>

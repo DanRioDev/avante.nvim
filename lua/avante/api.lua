@@ -298,45 +298,26 @@ function M.stop() require("avante.llm").cancel_inflight_request() end
 
 ---@param user_input? string Optional user input following @pr command
 function M.pr(user_input)
-  vim.notify("avante.api.pr called with input: " .. (user_input or "nil"), vim.log.levels.INFO, {title = "Avante Debug"})
-  
   local pr_ext = require("avante.extensions.pr")
-  vim.notify("avante.api.pr - PR extension loaded successfully", vim.log.levels.INFO, {title = "Avante Debug"})
   
   -- Check if PR extension is available before proceeding
   local available, error_msg = pr_ext.is_available()
-  vim.notify("avante.api.pr - PR extension availability check: " .. (available and "available" or "not available"), vim.log.levels.INFO, {title = "Avante Debug"})
   
   if not available then
-    vim.notify("avante.api.pr - PR extension not available: " .. error_msg, vim.log.levels.ERROR, {title = "Avante Debug"})
     Utils.error("PR extension is not available: " .. error_msg, { once = true })
     return
   end
   
-  vim.notify("avante.api.pr - Calling pr_ext.review_pr", vim.log.levels.INFO, {title = "Avante Debug"})
+  -- Just populate the PR context for later use with @pr mentions
   pr_ext.review_pr(user_input, function(success, result)
-    vim.notify("avante.api.pr - review_pr callback executed with success: " .. tostring(success), vim.log.levels.INFO, {title = "Avante Debug"})
-    
     if not success then
-      vim.notify("avante.api.pr - PR review failed: " .. result, vim.log.levels.ERROR, {title = "Avante Debug"})
-      Utils.error("PR review failed: " .. result, { once = true })
+      Utils.error("Failed to load PR context: " .. result, { once = true })
       return
     end
     
-    vim.notify("avante.api.pr - PR review successful, scheduling ask function", vim.log.levels.INFO, {title = "Avante Debug"})
-    -- Pass the constructed system prompt to the ask function
-    -- Use vim.schedule to ensure we're in the main thread
-    vim.schedule(function()
-      vim.notify("avante.api.pr - Calling M.ask with result", vim.log.levels.INFO, {title = "Avante Debug"})
-      M.ask({
-        question = result,
-        ask = false, -- Use chat mode for better PR review experience
-        new_chat = true -- Start a new chat for the PR review
-      })
-      vim.notify("avante.api.pr - M.ask completed", vim.log.levels.INFO, {title = "Avante Debug"})
-    end)
+    -- PR context has been set by review_pr function
+    Utils.info("PR context loaded successfully. You can now use @pr in your chat queries.", { once = true })
   end)
-  vim.notify("avante.api.pr - Function execution completed", vim.log.levels.INFO, {title = "Avante Debug"})
 end
 
 return setmetatable(M, {

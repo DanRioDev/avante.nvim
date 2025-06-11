@@ -150,114 +150,20 @@ describe("Utils", function()
   end)
   
   describe("get_chat_mentions", function()
-    it("should return chat mentions including pr_debug", function()
+    it("should return chat mentions including pr", function()
       local mentions = Utils.get_chat_mentions()
       
       -- Check that basic mentions are included
-      local has_codebase, has_diagnostics, has_pr, has_pr_debug = false, false, false, false
+      local has_codebase, has_diagnostics, has_pr = false, false, false
       for _, mention in ipairs(mentions) do
         if mention.command == "codebase" then has_codebase = true end
         if mention.command == "diagnostics" then has_diagnostics = true end
         if mention.command == "pr" then has_pr = true end
-        if mention.command == "pr_debug" then has_pr_debug = true end
       end
       
       assert.is_true(has_codebase)
       assert.is_true(has_diagnostics)
       assert.is_true(has_pr)
-      assert.is_true(has_pr_debug)
-    end)
-    
-    it("should have pr_debug mention with correct properties", function()
-      local mentions = Utils.get_chat_mentions()
-      
-      local pr_mention
-      for _, mention in ipairs(mentions) do
-        if mention.command == "pr_debug" then
-          pr_mention = mention
-          break
-        end
-      end
-      
-      assert.is_not_nil(pr_mention)
-      assert.equals("pr_debug", pr_mention.command)
-      assert.equals("pr_debug", pr_mention.description)
-      assert.equals("AI-assisted Pull Request review", pr_mention.details)
-      assert.is_function(pr_mention.callback)
-    end)
-    
-    it("should have pr_debug callback with enhanced debugging", function()
-      -- Mock vim.notify to capture debug messages
-      local debug_messages = {}
-      local original_notify = vim.notify
-      vim.notify = function(msg, level, opts)
-        table.insert(debug_messages, {
-          message = msg,
-          level = level,
-          title = opts and opts.title or nil
-        })
-      end
-      
-      -- Mock vim.api.nvim_get_current_line to simulate user input
-      local original_get_line = vim.api.nvim_get_current_line
-      vim.api.nvim_get_current_line = function()
-        return "@pr_debug test user input"
-      end
-      
-      -- Mock the avante.api module
-      local original_require = _G.require
-      _G.require = function(name)
-        if name == "avante.api" then
-          return {
-            pr = function(input)
-              -- Mock implementation that doesn't fail
-              return true
-            end
-          }
-        end
-        return original_require(name)
-      end
-      
-      local mentions = Utils.get_chat_mentions()
-      local pr_mention
-      for _, mention in ipairs(mentions) do
-        if mention.command == "pr_debug" then
-          pr_mention = mention
-          break
-        end
-      end
-      
-      -- Execute the callback
-      if pr_mention and pr_mention.callback then
-        pr_mention.callback({ test = "mock_sidebar" })
-      end
-      
-      -- Restore original functions
-      vim.notify = original_notify
-      vim.api.nvim_get_current_line = original_get_line
-      _G.require = original_require
-      
-      -- Check that debug messages were generated
-      assert.is_true(#debug_messages > 0, "Expected debug messages to be generated")
-      
-      -- Look for specific debug messages to ensure our enhanced debugging is working
-      local found_callback_trigger = false
-      local found_input_capture = false
-      local found_api_call = false
-      
-      for _, msg in ipairs(debug_messages) do
-        if string.match(msg.message, "@pr_debug callback triggered") then
-          found_callback_trigger = true
-        elseif string.match(msg.message, "Current line captured") then
-          found_input_capture = true
-        elseif string.match(msg.message, "About to call avante.api.pr") then
-          found_api_call = true
-        end
-      end
-      
-      assert.is_true(found_callback_trigger, "Expected to find callback trigger debug message")
-      assert.is_true(found_input_capture, "Expected to find input capture debug message")
-      assert.is_true(found_api_call, "Expected to find API call debug message")
     end)
   end)
 

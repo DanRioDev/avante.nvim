@@ -131,15 +131,14 @@ The command will provide helpful error messages for common issues:
 
 ## Integration with Avante
 
-The `@pr_debug` command integrates seamlessly with Avante's existing functionality:
-- Opens in chat mode for interactive discussion
-- Starts a new chat session for the PR review
+The `AvantePR` command integrates seamlessly with Avante's existing functionality:
+- Loads PR context for use with `@pr` mentions
 - Supports all of Avante's AI providers
 - Can be combined with other Avante features like file selection
 
 ## @pr Chat Mention
 
-After loading a PR using `@pr_debug` or the `:AvantePR` command, you can reference the PR context in subsequent chat messages using the `@pr` mention:
+After loading a PR using the `AvantePR` command, you can reference the PR context in subsequent chat messages using the `@pr` mention:
 
 ### Usage Examples
 
@@ -154,8 +153,7 @@ Are there any potential security issues in @pr?
 
 - **Context Persistence**: PR context remains loaded across multiple chat interactions
 - **Automatic Stripping**: The `@pr` mention is automatically removed from your query and replaced with PR context
-- **Error Handling**: If you use `@pr` without loading a PR first, you'll get a helpful error message
-- **JSON Encoding**: PR information is automatically formatted and provided to the AI model
+- **Error Handling**: If you use `@pr` without loading a PR first, you'll get a helpful error message to run `AvantePR` command first
 
 ### Manual Context Setting
 

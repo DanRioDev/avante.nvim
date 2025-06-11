@@ -21,7 +21,7 @@ local M = {}
 ---@type AvantePRDetails | nil
 local current_pr_details = nil
 
---- Sets the PR details, typically called by AvantePR command or @pr_debug logic.
+--- Sets the PR details, typically called by AvantePR command.
 ---@param pr_data AvantePRDetails|nil The structured PR data.
 function M.set_active_pr_details(pr_data)
   if pr_data then
