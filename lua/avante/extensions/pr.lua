@@ -46,7 +46,6 @@ end
 ---@return table?, string?
 local function get_pr_info(branch)
   -- Try to get PR info for the current branch using gh CLI
-  -- This approach doesn't actually require octo.nvim to be loaded
   local cmd = string.format(
     "gh pr view --json title,body,number,author,labels,url 2>/dev/null || gh pr view --json title,body,number,author,labels,url %s",
     branch
@@ -98,7 +97,7 @@ local function get_pr_diff(pr_number)
 end
 
 ---Construct comprehensive system prompt for PR review
----@param pr_data table PR information from octo/gh
+---@param pr_data table PR information from gh
 ---@param diff_content string PR diff content
 ---@param user_input? string Optional user input following @pr
 ---@return string
@@ -272,4 +271,3 @@ function M.review_pr(user_input, callback)
 end
 
 return M
-
