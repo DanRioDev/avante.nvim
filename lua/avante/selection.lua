@@ -3,6 +3,7 @@ local Config = require("avante.config")
 local Llm = require("avante.llm")
 local Provider = require("avante.providers")
 local RepoMap = require("avante.repo_map")
+local PullRequest = require("avante.extensions.pr")
 local PromptInput = require("avante.ui.prompt_input")
 local SelectionResult = require("avante.selection_result")
 local Range = require("avante.range")
@@ -190,6 +191,13 @@ function Selection:submit_input(input)
   input = mentions.new_content
   local project_context = mentions.enable_project_context and RepoMap.get_repo_map(file_ext) or nil
 
+  local pullrequest_context = mentions.enable_pullrequest_context
+      and PullRequest.is_available()
+      and PullRequest.review_pr(request, function(success, result)
+        if success then return result end
+      end)
+    or nil
+
   local diagnostics = Utils.lsp.get_current_selection_diagnostics(self.code_bufnr, self.selection)
 
   ---@type AvanteSelectedCode | nil
@@ -206,6 +214,7 @@ function Selection:submit_input(input)
   Llm.stream({
     ask = true,
     project_context = vim.json.encode(project_context),
+    pullrequest_context = pullrequest_context,
     diagnostics = vim.json.encode(diagnostics),
     selected_files = { { content = code_content, file_type = filetype, path = "" } },
     code_lang = filetype,
