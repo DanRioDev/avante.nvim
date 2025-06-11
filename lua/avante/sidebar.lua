@@ -2505,13 +2505,38 @@ function Sidebar:get_generate_prompts_options(request, cb)
   end
 
   if mentions.enable_pr_context then
-    -- Get PR context dynamically from AvantePR command
+    -- First check if PR context is already cached
+    local pr_manager_ok, pr_manager = pcall(require, "avante.pr_context_manager")
+    if pr_manager_ok then
+      local cached_pr = pr_manager.get_active_pr_details()
+      if cached_pr then
+        -- Use cached PR context, build it for chat usage
+        local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
+        local pr_info = nil
+        if pr_ext_ok and pr_ext.build_pr_context_for_chat then
+          pr_info = pr_ext.build_pr_context_for_chat(cached_pr, request)
+        else
+          -- Fallback to raw cached data
+          pr_info = cached_pr
+        end
+        
+        local prompts_opts = build_prompts_opts(pr_info)
+        cb(prompts_opts)
+        return
+      end
+    end
+    
+    -- No cached context, try to load fresh PR context
     local pr_ext_ok, pr_ext = pcall(require, "avante.extensions.pr")
     if pr_ext_ok and pr_ext.get_pr_context then
       pr_ext.get_pr_context(function(success, result)
         local pr_info = nil
         if success then
           pr_info = result
+          -- Store in context manager for future use
+          if pr_manager_ok then
+            pr_manager.set_active_pr_details(result)
+          end
         else
           Utils.warn("Failed to get PR context: " .. (result or "Unknown error"))
         end
@@ -2797,6 +2822,12 @@ function Sidebar:create_input_container()
     local lines = api.nvim_buf_get_lines(self.input_container.bufnr, 0, -1, false)
     local request = table.concat(lines, "\n")
     if request == "" then return end
+    
+    -- Check if request would become empty after mention processing but still needs handling
+    local mentions = Utils.extract_mentions(request)
+    if mentions.new_content == "" and not (mentions.enable_pr_context or mentions.enable_project_context or mentions.enable_diagnostics) then
+      return
+    end
     api.nvim_buf_set_lines(self.input_container.bufnr, 0, -1, false, {})
     api.nvim_win_set_cursor(self.input_container.winid, { 1, 0 })
     handle_submit(request)
