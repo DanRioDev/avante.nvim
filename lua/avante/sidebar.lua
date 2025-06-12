@@ -2437,6 +2437,9 @@ function Sidebar:get_generate_prompts_options(request, cb)
       end)
     or nil
 
+  vim.notify(pullrequest_context)
+  -- Utils.debug("pullrequest_context:", pullrequest_context)
+
   local diagnostics = nil
   if mentions.enable_diagnostics then
     if self.code ~= nil and self.code.bufnr ~= nil and self.code.selection ~= nil then

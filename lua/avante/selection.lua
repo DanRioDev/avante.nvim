@@ -198,6 +198,9 @@ function Selection:submit_input(input)
       end)
     or nil
 
+  vim.notify(pullrequest_context)
+  -- Utils.debug("pullrequest_context:", pullrequest_context)
+
   local diagnostics = Utils.lsp.get_current_selection_diagnostics(self.code_bufnr, self.selection)
 
   ---@type AvanteSelectedCode | nil
